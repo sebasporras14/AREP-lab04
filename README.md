@@ -42,16 +42,16 @@ Http://LocalHost:35000/prueba.js"
 ~~~
 ### retorno HTML
 
-![test](https://github.com/sebasporras14/AREP-lab04/blob/master/imagenes/pruebahtml.png)
+![test](https://github.com/sebasporras14/AREP-lab04/blob/master/img/pruebahtml.png)
 
-![test](https://github.com/sebasporras14/AREP-lab04/blob/master/imagenes/pruebahtml2.png)
+![test](https://github.com/sebasporras14/AREP-lab04/blob/master/img/pruebahtml2.png)
 
 ### retorno imagen
 
-![test](https://github.com/sebasporras14/AREP-lab04/blob/master/imagenes/img.png)
+![test](https://github.com/sebasporras14/AREP-lab04/blob/master/img/img.png)
 ### retorno js
 
-![test](https://github.com/sebasporras14/AREP-lab04/blob/master/imagenes/js.png)
+![test](https://github.com/sebasporras14/AREP-lab04/blob/master/img/js.png)
 
 ## Construido con 
 * [Maven](https://maven.apache.org/) - Dependency Management
