@@ -1,16 +1,21 @@
 package edu.escuelaing.arep.app;
 
-
+import java.lang.reflect.Method;
 import java.net.*;
+import edu.escuelaing.arep.app.types.file;
+import edu.escuelaing.arep.app.types.img;
+import edu.escuelaing.arep.app.types.text;
+
 import java.io.*;
 
- 
+
 
 public class HttpServer {
+    private static file fileController;
 
- 
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
+        ComponentLoader.loadComponents();
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(35000);
@@ -18,8 +23,7 @@ public class HttpServer {
             System.err.println("Could not listen on port: 35000.");
             System.exit(1);
         }
-        boolean running = true;
-        while (running) {
+        while (true) {
             Socket clientSocket = null;
             try {
                 System.out.println("Listo para recibir ...");
@@ -27,121 +31,70 @@ public class HttpServer {
             } catch (IOException e) {
                 System.err.println("Accept failed.");
                 System.exit(1);
+                break;
             }
 
- 
-
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(
-                            clientSocket.getInputStream()));
-            String inputLine, outputLine;
-
- 
-
-            boolean firstLine = true;
-            String uriString = "";
-
- 
-
-            while ((inputLine = in.readLine()) != null) {
-                System.out.println("Received: " + inputLine);
-                if (firstLine) {
-                    firstLine = false;
-                    // POST /hellopost?name=John HTTP/1.1
-                    uriString = inputLine.split(" ")[1];
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String Request = "";
+            Request += in.readLine() + "\n";
+            while (in.ready()) {
+                Request += (char) in.read();
+            }
+            System.out.println("Received: " + Request.split("\n")[0]);
+            String method = Request.split(" ")[0];
+            String path = Request.split(" ")[1];
+            URI functPath = new URI(path);
+            URI filePath = new URI("/target/classes/public" + path);
+            Method s = ComponentLoader.search(functPath.getPath(), method);
+            try {
+                if(s != null){
+                    String query = path.split("=")[1];
+                    String response = ComponentLoader.ejecutar(s,query);
+                    sendResponce(clientSocket, response);
+                } else {
+                    manageFile(filePath, clientSocket);
                 }
-                if (!in.ready()) {
-                    break;
-                }
-            }
-            System.out.println("URI: " + uriString);
+            }catch (Exception e){}
 
-
-            if (uriString.startsWith("/hello?")) {
-                outputLine = getHello(uriString);
-            } else {
-                outputLine = getIndexResponse();
-            }
-            out.println(outputLine);
-
- 
-
-            out.close();
             in.close();
-            clientSocket.close();
         }
         serverSocket.close();
     }
 
- 
-
-    public static String getHello(String uri) {
-        String response = "HTTP/1.1 200 OK\r\n"
-                + "Content-Type: application/json\r\n"
-                + "\r\n"
-                + "{ \"msg\": \"Hello Pedro\" }";
-        return response;
+    private static void manageFile(URI filePath, Socket clientSocket) throws Exception {
+        File file = new File(System.getProperty("user.dir") + filePath);
+        String fileType = getFileType(filePath);
+        if (!file.exists()) {
+            fileController = new text(clientSocket, "html", new URI("/target/classes/public" + "/NotFound.html"));
+        } else if (filePath.getPath().endsWith(".jpg") || filePath.getPath().endsWith(".png") || filePath.getPath().endsWith(".jpeg") || filePath.getPath().endsWith(".gif")){
+            fileController = new img(clientSocket, fileType, filePath);
+        } else if (filePath.getPath().endsWith(".html") || filePath.getPath().endsWith(".css") || filePath.getPath().endsWith(".js")) {
+            fileController = new text(clientSocket, fileType, filePath);
+        }else {
+            fileController = new text(clientSocket, "html", new URI("/target/classes/public" + "/NotFound.html"));
+        }
+        fileController.sendfile();
     }
 
- 
-
-    public static String getIndexResponse() {
-        String response = "HTTP/1.1 200 OK\r\n"
-                + "Content-Type: text/html\r\n"
-                + "\r\n"
-                + "<!DOCTYPE html>\n"
-                + "<html>\n"
-                + "    <head>\n"
-                + "        <title>Form Example</title>\n"
-                + "        <meta charset=\"UTF-8\">\n"
-                + "        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-                + "    </head>\n"
-                + "    <body>\n"
-                + "        <h1>Form with GET</h1>\n"
-                + "        <form action=\"/hello\">\n"
-                + "            <label for=\"name\">Name:</label><br>\n"
-                + "            <input type=\"text\" id=\"name\" name=\"name\" value=\"John\"><br><br>\n"
-                + "            <input type=\"button\" value=\"Submit\" onclick=\"loadGetMsg()\">\n"
-                + "        </form> \n"
-                + "        <div id=\"getrespmsg\"></div>\n"
-                + "\n"
-                + "        <script>\n"
-                + "            function loadGetMsg() {\n"
-                + "                let nameVar = document.getElementById(\"name\").value;\n"
-                + "                const xhttp = new XMLHttpRequest();\n"
-                + "                xhttp.onload = function() {\n"
-                + "                    document.getElementById(\"getrespmsg\").innerHTML =\n"
-                + "                    this.responseText;\n"
-                + "                }\n"
-                + "                xhttp.open(\"GET\", \"/hello?name=\"+nameVar);\n"
-                + "                xhttp.send();\n"
-                + "            }\n"
-                + "        </script>\n"
-                + "\n"
-                + "        <h1>Form with POST</h1>\n"
-                + "        <form action=\"/hellopost\">\n"
-                + "            <label for=\"postname\">Name:</label><br>\n"
-                + "            <input type=\"text\" id=\"postname\" name=\"name\" value=\"John\"><br><br>\n"
-                + "            <input type=\"button\" value=\"Submit\" onclick=\"loadPostMsg(postname)\">\n"
-                + "        </form>\n"
-                + "        \n"
-                + "        <div id=\"postrespmsg\"></div>\n"
-                + "        \n"
-                + "        <script>\n"
-                + "            function loadPostMsg(name){\n"
-                + "                let url = \"/hellopost?name=\" + name.value;\n"
-                + "\n"
-                + "                fetch (url, {method: 'POST'})\n"
-                + "                    .then(x => x.text())\n"
-                + "                    .then(y => document.getElementById(\"postrespmsg\").innerHTML = y);\n"
-                + "            }\n"
-                + "        </script>\n"
-                + "    </body>\n"
-                + "</html>";
-        return response;
-
- 
-
+    private static String getFileType(URI path){
+        String format = "";
+        try {
+            format = path.getPath().split("\\.")[1];
+        } catch (ArrayIndexOutOfBoundsException e){}
+        return format;
     }
+
+    public static void sendResponce(Socket clientSocket, String responce) throws IOException {
+        PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+        String outputLine;
+        outputLine = "HTTP/1.1 200 OK \r\n" +
+                "Content-Type: text/html" + " \r\n" +
+                "\r\n";
+        outputLine += responce;
+        out.println(outputLine);
+        out.close();
+        clientSocket.close();
+    }
+
+
 }
